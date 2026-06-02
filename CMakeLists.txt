@@ -1,6 +1,6 @@
 # CMake Project for SDL3_shadercross - Simple DirectMedia Layer Shader Cross Compiler
 # Written by @thatcosmonaut
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.22...4.0)
 
 # Version
 set(MAJOR_VERSION 3)
@@ -12,6 +12,8 @@ set(SDL_REQUIRED_VERSION "3.1.3")
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 project(SDL3_shadercross LANGUAGES C VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${MICRO_VERSION}")
+
+set(SHADERCROSS_MAINPROJECT ${SDL3_shadercross_IS_TOP_LEVEL})
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -44,8 +46,8 @@ option(SDLSHADERCROSS_CLI "Build command line executable" ON)
 cmake_dependent_option(SDLSHADERCROSS_CLI_STATIC "Link CLI with static libraries" OFF "SDLSHADERCROSS_CLI;SDLSHADERCROSS_STATIC;TARGET SDL3::SDL3-static" OFF)
 cmake_dependent_option(SDLSHADERCROSS_CLI_LEAKCHECK "Check shadercross for memory leaks" OFF "SDLSHADERCROSS_CLI;TARGET SDL3::SDL3_test" OFF)
 option(SDLSHADERCROSS_WERROR "Enable Werror" OFF)
-option(SDLSHADERCROSS_INSTALL "Enable installation" OFF)
-cmake_dependent_option(SDLSHADERCROSS_INSTALL_CPACK "Enable CPack installation" OFF "SDLSHADERCROSS_INSTALL" OFF)
+option(SDLSHADERCROSS_INSTALL "Enable installation" ${SHADERCROSS_MAINPROJECT})
+cmake_dependent_option(SDLSHADERCROSS_INSTALL_CPACK "Enable CPack installation" ${SHADERCROSS_MAINPROJECT} "SDLSHADERCROSS_INSTALL" OFF)
 cmake_dependent_option(SDLSHADERCROSS_INSTALL_MAN "Install man pages for SDL3_shadercross" OFF "SDLSHADERCROSS_INSTALL" OFF)
 cmake_dependent_option(SDLSHADERCROSS_INSTALL_RUNTIME "Download, build and install runtime dependencies" OFF "SDLSHADERCROSS_INSTALL" OFF)
 
