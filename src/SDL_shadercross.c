@@ -1609,13 +1609,13 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_SAMPLED_IMAGE,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_texture_samplers);
-    num_texture_samplers = FilterBindlessResources(compiler, reflected_resources, num_texture_samplers, 4);
 
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
         return NULL;
     }
+    num_texture_samplers = FilterBindlessResources(compiler, reflected_resources, num_texture_samplers, 4);
 
     // If source is HLSL, we might have separate images and samplers
     if (num_texture_samplers == 0) {
@@ -1639,12 +1639,12 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_STORAGE_IMAGE,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_storage_textures);
-    num_storage_textures = FilterBindlessResources(compiler, reflected_resources, num_storage_textures, 4);
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
         return NULL;
     }
+    num_storage_textures = FilterBindlessResources(compiler, reflected_resources, num_storage_textures, 4);
 
     // If source is HLSL, storage images might be marked as separate images
     result = spvc_resources_get_resource_list_for_type(
@@ -1652,14 +1652,17 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_SEPARATE_IMAGE,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_separate_images);
-    num_separate_images = FilterBindlessResources(compiler, reflected_resources, num_separate_images, 4);
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
         return NULL;
     }
+    num_separate_images = FilterBindlessResources(compiler, reflected_resources, num_separate_images, 4);
     // The number of storage textures is the number of separate images minus the number of samplers.
-    num_storage_textures += (num_separate_images - num_separate_samplers);
+    if (num_separate_images > num_separate_samplers)
+    {
+        num_storage_textures += (num_separate_images - num_separate_samplers);
+    }
 
     // Storage buffers
     result = spvc_resources_get_resource_list_for_type(
@@ -1667,12 +1670,12 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_STORAGE_BUFFER,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_storage_buffers);
-    num_storage_buffers = FilterBindlessResources(compiler, reflected_resources, num_storage_buffers, 4);
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
         return NULL;
     }
+    num_storage_buffers = FilterBindlessResources(compiler, reflected_resources, num_storage_buffers, 4);
 
     // Uniform buffers
     result = spvc_resources_get_resource_list_for_type(
@@ -1680,12 +1683,12 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_UNIFORM_BUFFER,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_uniform_buffers);
-    num_uniform_buffers = FilterBindlessResources(compiler, reflected_resources, num_uniform_buffers, 4);
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
         return NULL;
     }
+    num_uniform_buffers = FilterBindlessResources(compiler, reflected_resources, num_uniform_buffers, 4);
 
     // Inputs (stage 1: count number of inputs, and name lengths)
     result = spvc_resources_get_resource_list_for_type(
