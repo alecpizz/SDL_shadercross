@@ -1026,8 +1026,8 @@ static SPIRVTranspileContext *SDL_ShaderCross_INTERNAL_TranspileFromSPIRV(
             }
 
             unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (!(descriptor_set_index == 0 || descriptor_set_index == 2)) {
-                SDL_SetError("%s", "Descriptor set index for graphics texture-sampler must be 0 or 2!");
+            if (!(descriptor_set_index == 0 || descriptor_set_index == 3)) {
+                SDL_SetError("%s", "Descriptor set index for compute texture-sampler must be 0 or 3!");
                 spvc_context_destroy(context);
                 return NULL;
             }
@@ -1063,8 +1063,8 @@ static SPIRVTranspileContext *SDL_ShaderCross_INTERNAL_TranspileFromSPIRV(
             }
 
             unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (!(descriptor_set_index == 0 || descriptor_set_index == 2)) {
-                SDL_SetError("%s", "Descriptor set index for graphics storage texture must be 0 or 2!");
+            if (!(descriptor_set_index == 0 || descriptor_set_index == 2 || descriptor_set_index == 4)) {
+                SDL_SetError("%s", "Descriptor set index for graphics storage texture must be 0 or 2 or 4!");
                 spvc_context_destroy(context);
                 return NULL;
             }
@@ -1101,250 +1101,11 @@ static SPIRVTranspileContext *SDL_ShaderCross_INTERNAL_TranspileFromSPIRV(
             }
 
             unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (!(descriptor_set_index == 0 || descriptor_set_index == 2)) {
-                SDL_SetError("%s", "Descriptor set index for graphics storage texture must be 0 or 2!");
+            if (!(descriptor_set_index == 0 || descriptor_set_index == 2 || descriptor_set_index == 4)) {
+                SDL_SetError("%s", "Descriptor set index for graphics storage texture must be 0 or 2 or 4!");
                 spvc_context_destroy(context);
                 return NULL;
             }
-
-            unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
-
-            textureBindings[numTextureBindings].stage = executionModel;
-            textureBindings[numTextureBindings].desc_set = descriptor_set_index;
-            textureBindings[numTextureBindings].binding = binding_index;
-            textureBindings[numTextureBindings].count = 1;
-            // assign binding index after we have collected all resources
-
-            numTextureBindings += 1;
-        }
-
-        // Uniform buffers
-        result = spvc_resources_get_resource_list_for_type(
-            resources,
-            SPVC_RESOURCE_TYPE_UNIFORM_BUFFER,
-            (const spvc_reflected_resource **)&reflected_resources,
-            &num_uniform_buffers);
-        if (result < 0) {
-            SPVC_ERROR(spvc_resources_get_resource_list_for_type);
-            spvc_context_destroy(context);
-            return NULL;
-        }
-
-        for (size_t i = 0; i < num_uniform_buffers; i += 1) {
-            if (!spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet) || !spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding)) {
-                SDL_SetError("%s", "Shader resources must have descriptor set and binding index!");
-                spvc_context_destroy(context);
-                return NULL;
-            }
-
-            unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (!(descriptor_set_index == 1 || descriptor_set_index == 3)) {
-                SDL_SetError("%s", "Descriptor set index for graphics uniform buffer must be 1 or 3!");
-                spvc_context_destroy(context);
-                return NULL;
-            }
-
-            unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
-
-            bufferBindings[numBufferBindings].stage = executionModel;
-            bufferBindings[numBufferBindings].desc_set = descriptor_set_index;
-            bufferBindings[numBufferBindings].binding = binding_index;
-            bufferBindings[numBufferBindings].count = 1;
-            // assign binding index after we have collected all resources
-
-            numBufferBindings += 1;
-        }
-
-        // Storage buffers
-        result = spvc_resources_get_resource_list_for_type(
-            resources,
-            SPVC_RESOURCE_TYPE_STORAGE_BUFFER,
-            (const spvc_reflected_resource **)&reflected_resources,
-            &num_storage_buffers);
-        if (result < 0) {
-            SPVC_ERROR(spvc_resources_get_resource_list_for_type);
-            spvc_context_destroy(context);
-            return NULL;
-        }
-
-        for (size_t i = 0; i < num_storage_buffers; i += 1) {
-            if (!spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet) || !spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding)) {
-                SDL_SetError("%s", "Shader resources must have descriptor set and binding index!");
-                spvc_context_destroy(context);
-                return NULL;
-            }
-
-            unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (!(descriptor_set_index == 0 || descriptor_set_index == 2)) {
-                SDL_SetError("%s", "Descriptor set index for graphics storage buffer must be 0 or 2!");
-                spvc_context_destroy(context);
-                return NULL;
-            }
-
-            unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
-
-            bufferBindings[numBufferBindings].stage = executionModel;
-            bufferBindings[numBufferBindings].desc_set = descriptor_set_index;
-            bufferBindings[numBufferBindings].binding = binding_index;
-            bufferBindings[numBufferBindings].count = 1;
-            // assign binding index after we have collected all resources
-
-            numBufferBindings += 1;
-        }
-
-        // Textures come first so we can just use the binding slot
-        for (Uint32 i = 0; i < numTextureBindings; i += 1) {
-            textureBindings[i].msl_texture = textureBindings[i].binding;
-            textureBindings[i].msl_sampler = textureBindings[i].binding;
-            result = spvc_compiler_msl_add_resource_binding_2(compiler, &textureBindings[i]);
-        }
-
-        if (result < 0) {
-            SPVC_ERROR(spvc_compiler_msl_add_resource_binding_2);
-            spvc_context_destroy(context);
-            return NULL;
-        }
-
-        // Calculate number of uniform buffers
-        Uint32 uniformBufferCount = 0;
-
-        for (Uint32 i = 0; i < numBufferBindings; i += 1) {
-            if (bufferBindings[i].desc_set == 1 || bufferBindings[i].desc_set == 3) {
-                uniformBufferCount += 1;
-            }
-        }
-
-        // Calculate resource indices
-        for (Uint32 i = 0; i < numBufferBindings; i += 1) {
-            if (bufferBindings[i].desc_set == 1 || bufferBindings[i].desc_set == 3) {
-                // Uniform buffers are alone in the descriptor set
-                bufferBindings[i].msl_buffer = bufferBindings[i].binding;
-            } else {
-                // Subtract by the texture count because the textures precede the storage buffers in the descriptor set
-                bufferBindings[i].msl_buffer = uniformBufferCount + (bufferBindings[i].binding - numTextureBindings);
-            }
-
-            result = spvc_compiler_msl_add_resource_binding_2(compiler, &bufferBindings[i]);
-
-            if (result < 0) {
-                SPVC_ERROR(spvc_compiler_msl_add_resource_binding_2);
-                spvc_context_destroy(context);
-                return NULL;
-            }
-        }
-    }
-
-    if (backend == SPVC_BACKEND_MSL && shaderStage == SDL_SHADERCROSS_SHADERSTAGE_COMPUTE) {
-        spvc_resources resources;
-        spvc_reflected_resource *reflected_resources;
-        size_t num_texture_samplers;
-        size_t num_storage_textures; // total storage textures
-        size_t num_storage_buffers; // total storage buffers
-        size_t num_uniform_buffers;
-        size_t num_separate_samplers = 0;
-        size_t num_separate_images = 0;
-
-        spvc_msl_resource_binding_2 bufferBindings[32];
-        Uint32 numBufferBindings = 0;
-
-        spvc_msl_resource_binding_2 textureBindings[32];
-        Uint32 numTextureBindings = 0;
-
-        spvc_set active_variables;
-        result = spvc_compiler_get_active_interface_variables(compiler, &active_variables);
-        if (result < 0) {
-            SPVC_ERROR(spvc_compiler_get_active_interface_variables);
-            spvc_context_destroy(context);
-            return NULL;
-        }
-
-        result = spvc_compiler_create_shader_resources_for_active_variables(compiler, &resources, active_variables);
-        if (result < 0) {
-            SPVC_ERROR(spvc_compiler_create_shader_resources_for_active_variables);
-            spvc_context_destroy(context);
-            return NULL;
-        }
-
-        // Combined texture-samplers
-        result = spvc_resources_get_resource_list_for_type(
-            resources,
-            SPVC_RESOURCE_TYPE_SAMPLED_IMAGE,
-            (const spvc_reflected_resource **)&reflected_resources,
-            &num_texture_samplers);
-        if (result < 0) {
-            SPVC_ERROR(spvc_resources_get_resource_list_for_type);
-            spvc_context_destroy(context);
-            return NULL;
-        }
-
-        // If source is HLSL, we might have separate images and samplers
-        if (num_texture_samplers == 0) {
-            result = spvc_resources_get_resource_list_for_type(
-                resources,
-                SPVC_RESOURCE_TYPE_SEPARATE_SAMPLERS,
-                (const spvc_reflected_resource **)&reflected_resources,
-                &num_separate_samplers);
-            if (result < 0) {
-                SPVC_ERROR(spvc_resources_get_resource_list_for_type);
-                spvc_context_destroy(context);
-                return NULL;
-            }
-            num_texture_samplers = num_separate_samplers;
-        }
-
-        for (size_t i = 0; i < num_texture_samplers; i += 1) {
-            if (!spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet) || !spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding)) {
-                SDL_SetError("%s", "Shader resources must have descriptor set and binding index!");
-                spvc_context_destroy(context);
-                return NULL;
-            }
-
-            unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (descriptor_set_index != 0) {
-                SDL_SetError("%s", "Descriptor set index for compute texture-sampler must be 0!");
-                spvc_context_destroy(context);
-                return NULL;
-            }
-
-            unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
-
-            textureBindings[numTextureBindings].stage = executionModel;
-            textureBindings[numTextureBindings].desc_set = descriptor_set_index;
-            textureBindings[numTextureBindings].binding = binding_index;
-            textureBindings[numTextureBindings].count = 1;
-            // assign binding index after we have collected all resources
-
-            numTextureBindings += 1;
-        }
-
-        // Readonly storage textures
-        result = spvc_resources_get_resource_list_for_type(
-            resources,
-            SPVC_RESOURCE_TYPE_STORAGE_IMAGE,
-            (const spvc_reflected_resource **)&reflected_resources,
-            &num_storage_textures);
-        if (result < 0) {
-            SPVC_ERROR(spvc_resources_get_resource_list_for_type);
-            spvc_context_destroy(context);
-            return NULL;
-        }
-
-        for (size_t i = 0; i < num_storage_textures; i += 1) {
-            if (!spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet) || !spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding)) {
-                SDL_SetError("%s", "Shader resources must have descriptor set and binding index!");
-                spvc_context_destroy(context);
-                return NULL;
-            }
-
-            unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (!(descriptor_set_index == 0 || descriptor_set_index == 1)) {
-                SDL_SetError("%s", "Descriptor set index for compute storage texture must be 0 or 1!");
-                spvc_context_destroy(context);
-                return NULL;
-            }
-
-            // Skip readwrite textures
-            if (descriptor_set_index != 0) { continue; }
 
             unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
 
@@ -1378,13 +1139,13 @@ static SPIRVTranspileContext *SDL_ShaderCross_INTERNAL_TranspileFromSPIRV(
             }
 
             unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (!(descriptor_set_index == 0 || descriptor_set_index == 1)) {
-                SDL_SetError("%s", "Descriptor set index for compute storage texture must be 0 or 1!");
+            if (!(descriptor_set_index == 0 || descriptor_set_index == 1 || descriptor_set_index == 3)) {
+                SDL_SetError("%s", "Descriptor set index for compute storage texture must be 0 or 1 or 3!");
                 spvc_context_destroy(context);
                 return NULL;
             }
 
-            // Skip readwrite textures
+            // Skip readwrite textures and bindless
             if (descriptor_set_index != 0) { continue; }
 
             unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
@@ -1515,13 +1276,50 @@ static SPIRVTranspileContext *SDL_ShaderCross_INTERNAL_TranspileFromSPIRV(
             }
 
             unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-            if (!(descriptor_set_index == 0|| descriptor_set_index == 1)) {
-                SDL_SetError("%s", "Descriptor set index for compute storage buffer must be 0 or 1!");
+            if (!(descriptor_set_index == 0 || descriptor_set_index == 2 || descriptor_set_index == 4)) {
+                SDL_SetError("%s", "Descriptor set index for graphics storage buffer must be 0 or 2 or 4!");
                 spvc_context_destroy(context);
                 return NULL;
             }
 
-            // Skip readwrite buffers
+            unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
+
+            bufferBindings[numBufferBindings].stage = executionModel;
+            bufferBindings[numBufferBindings].desc_set = descriptor_set_index;
+            bufferBindings[numBufferBindings].binding = binding_index;
+            bufferBindings[numBufferBindings].count = 1;
+            // assign binding index after we have collected all resources
+
+            numBufferBindings += 1;
+        }
+
+        // Uniform buffers
+        result = spvc_resources_get_resource_list_for_type(
+            resources,
+            SPVC_RESOURCE_TYPE_UNIFORM_BUFFER,
+            (const spvc_reflected_resource **)&reflected_resources,
+            &num_uniform_buffers);
+        if (result < 0) {
+            SPVC_ERROR(spvc_resources_get_resource_list_for_type);
+            spvc_context_destroy(context);
+            return NULL;
+        }
+
+        for (size_t i = 0; i < num_uniform_buffers; i += 1) {
+            if (!spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet) || !spvc_compiler_has_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding)) {
+                SDL_SetError("%s", "Shader resources must have descriptor set and binding index!");
+                spvc_context_destroy(context);
+                return NULL;
+            }
+
+            unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
+            if (!(descriptor_set_index == 0 || descriptor_set_index == 1 || descriptor_set_index == 3)) {
+                SDL_SetError("%s", "Descriptor set index for compute storage buffer must be 0 or 1 or 3!");
+                spvc_context_destroy(context);
+                return NULL;
+            }
+
+            // Skip readwrite buffers and bindless
             if (descriptor_set_index != 0) { continue; }
 
             unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
@@ -1539,7 +1337,7 @@ static SPIRVTranspileContext *SDL_ShaderCross_INTERNAL_TranspileFromSPIRV(
         for (size_t i = 0; i < num_storage_buffers; i += 1) {
             unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
 
-            // Skip readonly buffers
+            // Skip readonly buffers and bindless
             if (descriptor_set_index != 1) { continue; }
 
             unsigned int binding_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationBinding);
@@ -1725,6 +1523,17 @@ void SDL_ShaderCross_INTERNAL_GetIOVars(
     }
 }
 
+size_t FilterBindlessResources(spvc_compiler compiler, const spvc_reflected_resource* resources, size_t count, unsigned int bindlessSet){
+    size_t result = 0;
+    for (size_t i = 0; i < count; i++){
+        const unsigned int set = spvc_compiler_get_decoration(compiler, resources[i].id, SpvDecorationDescriptorSet);
+        if (set != bindlessSet){
+            result++;
+        }
+    }
+    return result;
+}
+
 // Acquire metadata from SPIRV bytecode.
 // TODO: validate descriptor sets
 SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
@@ -1800,6 +1609,8 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_SAMPLED_IMAGE,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_texture_samplers);
+    num_texture_samplers = FilterBindlessResources(compiler, reflected_resources, num_texture_samplers, 4);
+
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
@@ -1818,6 +1629,7 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
             spvc_context_destroy(context);
             return NULL;
         }
+        num_separate_samplers = FilterBindlessResources(compiler, reflected_resources, num_separate_samplers, 4);
         num_texture_samplers = num_separate_samplers;
     }
 
@@ -1827,6 +1639,7 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_STORAGE_IMAGE,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_storage_textures);
+    num_storage_textures = FilterBindlessResources(compiler, reflected_resources, num_storage_textures, 4);
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
@@ -1839,6 +1652,7 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_SEPARATE_IMAGE,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_separate_images);
+    num_separate_images = FilterBindlessResources(compiler, reflected_resources, num_separate_images, 4);
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
@@ -1853,6 +1667,7 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_STORAGE_BUFFER,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_storage_buffers);
+    num_storage_buffers = FilterBindlessResources(compiler, reflected_resources, num_storage_buffers, 4);
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
@@ -1865,6 +1680,7 @@ SDL_ShaderCross_GraphicsShaderMetadata * SDL_ShaderCross_ReflectGraphicsSPIRV(
         SPVC_RESOURCE_TYPE_UNIFORM_BUFFER,
         (const spvc_reflected_resource **)&reflected_resources,
         &num_uniform_buffers);
+    num_uniform_buffers = FilterBindlessResources(compiler, reflected_resources, num_uniform_buffers, 4);
     if (result < 0) {
         SPVC_ERROR(spvc_resources_get_resource_list_for_type);
         spvc_context_destroy(context);
@@ -2033,6 +1849,7 @@ SDL_ShaderCross_ComputePipelineMetadata * SDL_ShaderCross_ReflectComputeSPIRV(
         spvc_context_destroy(context);
         return false;
     }
+    num_texture_samplers = FilterBindlessResources(compiler, reflected_resources, num_texture_samplers, 3);
 
     // If source is HLSL, we might have separate images and samplers
     if (num_texture_samplers == 0) {
@@ -2074,7 +1891,7 @@ SDL_ShaderCross_ComputePipelineMetadata * SDL_ShaderCross_ReflectComputeSPIRV(
             num_readonly_storage_textures += 1;
         } else if (descriptor_set_index == 1) {
             num_readwrite_storage_textures += 1;
-        } else {
+        } else if (descriptor_set_index != 3) {
             SDL_SetError("%s", "Descriptor set index for compute storage texture must be 0 or 1!");
             spvc_context_destroy(context);
             return false;
@@ -2109,7 +1926,7 @@ SDL_ShaderCross_ComputePipelineMetadata * SDL_ShaderCross_ReflectComputeSPIRV(
             num_readonly_storage_textures += 1;
         } else if (descriptor_set_index == 1) {
             num_readwrite_storage_textures += 1;
-        } else {
+        } else if (descriptor_set_index != 3) {
             SDL_SetError("%s", "Descriptor set index for compute storage texture must be 0 or 1!");
             spvc_context_destroy(context);
             return false;
@@ -2137,17 +1954,12 @@ SDL_ShaderCross_ComputePipelineMetadata * SDL_ShaderCross_ReflectComputeSPIRV(
         }
 
         unsigned int descriptor_set_index = spvc_compiler_get_decoration(compiler, reflected_resources[i].id, SpvDecorationDescriptorSet);
-        if (!(descriptor_set_index == 0 || descriptor_set_index == 1)) {
-            SDL_SetError("%s", "Descriptor set index for compute storage buffer must be 0 or 1!");
-            spvc_context_destroy(context);
-            return false;
-        }
 
         if (descriptor_set_index == 0) {
             num_readonly_storage_buffers += 1;
         } else if (descriptor_set_index == 1) {
             num_readwrite_storage_buffers += 1;
-        } else {
+        } else if (descriptor_set_index != 3) {
             SDL_SetError("%s", "Descriptor set index for compute storage buffer must be 0 or 1!");
             spvc_context_destroy(context);
             return false;
@@ -2165,6 +1977,7 @@ SDL_ShaderCross_ComputePipelineMetadata * SDL_ShaderCross_ReflectComputeSPIRV(
         spvc_context_destroy(context);
         return false;
     }
+    num_uniform_buffers = FilterBindlessResources(compiler, reflected_resources, num_uniform_buffers, 3);
 
     // Threadcount
     SDL_ShaderCross_ComputePipelineMetadata *metadata = SDL_malloc(sizeof(SDL_ShaderCross_ComputePipelineMetadata));
